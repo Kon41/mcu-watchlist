@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MCU Watch">
+<meta name="theme-color" content="#08090F">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="apple-touch-icon" sizes="512x512" href="icon-512.png">
+<meta name="mobile-web-app-capable" content="yes">
+<title>MCU Watch</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#08090F;--surface:#0E1018;--card:#12141E;--card2:#181A26;
+  --border:rgba(255,255,255,0.07);--gold:#F0C040;--blue2:#1d6fa5;
+  --purple:#A855F7;--text:#E8EAF2;--muted:#5A5F72;--sub:#9099B0;
+  --safe-top:env(safe-area-inset-top,0px);--safe-bot:env(safe-area-inset-bottom,0px);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;background:var(--bg)}
+body{font-family:'Outfit',sans-serif;color:var(--text);overscroll-behavior:none}
+#app{display:flex;flex-direction:column;height:100vh;height:100dvh}
+
+/* TOPBAR */
+.topbar{flex-shrink:0;padding:calc(var(--safe-top) + 12px) 16px 12px;background:linear-gradient(180deg,#0A0B14,rgba(8,9,15,0.96));backdrop-filter:blur(20px);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;z-index:50}
+.topbar-info{flex:1}
+.topbar-title{font-family:'Bebas Neue';font-size:26px;letter-spacing:2px;color:#fff;line-height:1}
+.topbar-sub{font-size:12px;color:var(--muted);letter-spacing:1px;margin-top:2px}
+
+
+
+/* PROGRESS RING */
+.progress-ring{position:relative;width:44px;height:44px;flex-shrink:0}
+.progress-ring svg{transform:rotate(-90deg)}
+.ring-text{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ring-pct{font-size:11px;font-weight:700;color:var(--gold);line-height:1}
+.ring-lbl{font-size:8px;color:var(--muted);letter-spacing:1px;margin-top:1px}
+
+/* FILTERS */
+.filter-bar{flex-shrink:0;display:flex;gap:6px;padding:9px 14px;overflow-x:auto;scrollbar-width:none;background:var(--surface);border-bottom:1px solid var(--border)}
+.filter-bar::-webkit-scrollbar{display:none}
+.ftab{flex-shrink:0;padding:7px 14px;border-radius:20px;font-size:13px;font-weight:600;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;transition:all .15s;white-space:nowrap}
+.ftab.active{background:var(--gold);color:#000;border-color:var(--gold)}
+.ftab.fox-tab.active{background:var(--purple);color:#fff;border-color:var(--purple)}
+.ftab.mcu-tab.active{background:var(--blue2);color:#fff;border-color:var(--blue2)}
+
+/* SEARCH */
+.search-wrap{flex-shrink:0;padding:9px 14px 6px;background:var(--surface)}
+.search-input{width:100%;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:11px 14px 11px 40px;font-family:'Outfit';font-size:15px;color:var(--text);outline:none;transition:border-color .2s;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%235A5F72' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398l3.85 3.85a1 1 0 0 0 1.415-1.415l-3.868-3.833zm-5.242 1.656a5 5 0 1 1 0-10 5 5 0 0 1 0 10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:12px center}
+.search-input::placeholder{color:var(--muted)}
+.search-input:focus{border-color:rgba(240,192,64,0.3)}
+
+/* SCROLL */
+.scroll-area{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-bottom:calc(var(--safe-bot) + 86px)}
+.scroll-area::-webkit-scrollbar{display:none}
+
+/* SECTION HEADER */
+.section-header{display:flex;align-items:center;gap:10px;padding:20px 14px 10px;position:sticky;top:0;z-index:10;background:var(--bg)}
+.section-ghost{font-family:'Bebas Neue';font-size:50px;color:rgba(255,255,255,0.04);line-height:1;user-select:none;min-width:44px}
+.section-text h3{font-weight:800;font-size:14px;letter-spacing:2px;text-transform:uppercase;color:#fff}
+.section-text p{font-size:11px;color:var(--muted);margin-top:3px}
+.section-line{flex:1;height:1px;opacity:.15}
+
+/* CARD GRID
+   Portrait  → flex column (1 col)
+   Landscape → CSS grid 2 cols via .landscape class added by JS */
+.card-grid{padding:0 10px;display:flex;flex-direction:column;gap:10px}
+.card-grid.landscape{display:grid !important;grid-template-columns:1fr 1fr !important;gap:8px !important;flex-direction:unset !important}
+
+/* MOVIE CARD */
+.movie-card{border-radius:14px;background:var(--card);border:1px solid var(--border);overflow:hidden;transition:opacity .2s,transform .12s;position:relative}
+.movie-card.is-watched{opacity:.28}
+.movie-card:active{transform:scale(0.983)}
+.card-accent{height:3px;width:100%}
+.card-inner{display:flex;gap:14px;padding:12px 12px 10px;align-items:flex-start}
+.card-content{flex:1;min-width:0}
+.card-badges{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:7px}
+.badge{font-size:10px;font-weight:700;letter-spacing:1px;padding:3px 7px;border-radius:4px;text-transform:uppercase}
+.badge-fox{background:rgba(168,85,247,0.18);color:var(--purple);border:1px solid rgba(168,85,247,0.3)}
+.badge-mcu{background:rgba(29,111,165,0.18);color:#60A5FA;border:1px solid rgba(29,111,165,0.28)}
+.badge-essential{background:rgba(240,192,64,0.12);color:var(--gold);border:1px solid rgba(240,192,64,0.25)}
+.badge-optional{background:rgba(90,95,114,0.14);color:#6B7280;border:1px solid rgba(90,95,114,0.2)}
+.badge-year{background:transparent;color:var(--muted);border:1px solid rgba(255,255,255,0.08)}
+.card-title{font-weight:700;font-size:16px;color:#F0F2FA;line-height:1.25;margin-bottom:4px}
+.card-note{font-size:12px;color:var(--sub);line-height:1.55}
+
+/* CHARACTERS */
+.chars-section{padding:0 14px 14px}
+.chars-chips{display:flex;flex-wrap:wrap;gap:5px}
+.char-chip{font-size:11px;font-weight:500;padding:3px 10px;border-radius:20px}
+.more-btn{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;background:rgba(255,255,255,0.04);color:var(--muted);border:1px solid rgba(255,255,255,0.08);cursor:pointer}
+.more-btn:active{background:rgba(255,255,255,0.1)}
+
+/* WATCH BUTTON */
+.watch-wrap{display:flex;align-items:flex-start;padding-top:1px}
+.watch-btn{width:30px;height:30px;border-radius:50%;flex-shrink:0;border:2px solid rgba(255,255,255,0.14);background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#000;transition:all .15s}
+.watch-btn.on{background:var(--gold);border-color:var(--gold)}
+
+/* BOTTOM BAR */
+.bottom-bar{position:fixed;bottom:0;left:0;right:0;padding:11px 18px calc(var(--safe-bot) + 11px);background:linear-gradient(0deg,rgba(8,9,15,0.98),rgba(8,9,15,0.88));backdrop-filter:blur(20px);border-top:1px solid var(--border);display:flex;align-items:center;gap:12px;z-index:40}
+.stat-item{text-align:center}
+.stat-num{font-family:'Bebas Neue';font-size:22px;letter-spacing:1px;line-height:1}
+.stat-lbl{font-size:9px;color:var(--muted);letter-spacing:1.5px;margin-top:1px}
+.stat-div{width:1px;height:28px;background:var(--border)}
+.bot-progress{flex:1}
+.bot-track{height:4px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden;margin-bottom:4px}
+.bot-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--blue2),var(--gold));transition:width .4s ease}
+.bot-txt{font-size:10px;color:var(--muted);display:flex;justify-content:space-between}
+
+/* EMPTY STATE */
+.empty{text-align:center;padding:60px 32px;color:var(--muted)}
+.empty-icon{font-size:44px;margin-bottom:12px}
+.empty h3{font-size:17px;color:var(--sub);margin-bottom:6px}
+.empty p{font-size:13px;line-height:1.6}
+
+/* CARD ANIMATION */
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.movie-card{animation:fadeUp .2s ease both}
+
+/* POSTER THUMBNAIL */
+.card-poster{
+  width:72px;height:108px;border-radius:10px;flex-shrink:0;
+  overflow:hidden;background:var(--card2);
+  border:1px solid rgba(255,255,255,0.1);
+  position:relative;cursor:pointer;
+  transition:transform .15s,box-shadow .15s;
+}
+.card-poster:active{transform:scale(0.94)}
+.card-poster img{
+  width:100%;height:100%;object-fit:cover;display:block;
+}
+.card-poster-fallback{
+  width:100%;height:100%;display:flex;align-items:center;justify-content:center;
+  font-size:9px;color:var(--muted);text-align:center;padding:6px;line-height:1.3;
+  background:linear-gradient(135deg,var(--card2),var(--surface));
+}
+.is-watched .card-poster{opacity:0.4;}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.78);backdrop-filter:blur(8px);z-index:200;display:flex;align-items:flex-end;opacity:0;pointer-events:none;transition:opacity .22s}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal-sheet{width:100%;background:var(--card2);border-radius:22px 22px 0 0;padding:0 0 calc(var(--safe-bot) + 22px);max-height:92vh;overflow-y:auto;transform:translateY(36px);transition:transform .28s cubic-bezier(.34,1.56,.64,1)}
+.modal-overlay.open .modal-sheet{transform:translateY(0)}
+.modal-handle{width:34px;height:4px;border-radius:2px;background:rgba(255,255,255,0.14);margin:14px auto 0}
+
+/* MODAL POSTER HERO */
+.modal-poster-hero{
+  width:100%;position:relative;overflow:hidden;
+  background:var(--surface);
+  display:flex;align-items:center;justify-content:center;
+  border-radius:0;
+}
+.modal-poster-hero img{
+  width:100%;max-height:340px;object-fit:cover;display:block;
+}
+.modal-poster-hero-fallback{
+  width:100%;height:220px;display:flex;align-items:center;justify-content:center;
+  font-size:48px;background:linear-gradient(135deg,var(--surface),var(--card));
+}
+.modal-poster-gradient{
+  position:absolute;bottom:0;left:0;right:0;height:120px;
+  background:linear-gradient(to top,var(--card2),transparent);
+  pointer-events:none;
+}
+.modal-poster-zoom-btn{
+  position:absolute;top:10px;right:10px;
+  width:32px;height:32px;border-radius:50%;
+  background:rgba(0,0,0,0.55);backdrop-filter:blur(6px);
+  border:1px solid rgba(255,255,255,0.15);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;color:#fff;font-size:14px;
+}
+
+/* MODAL BODY */
+.modal-body{padding:14px 18px 0}
+.modal-title{font-family:'Bebas Neue';font-size:28px;letter-spacing:2px;margin-bottom:4px}
+.modal-sub{font-size:12px;color:var(--muted);margin-bottom:18px}
+.modal-row{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.modal-row:last-child{border-bottom:none}
+.modal-name{font-size:13px;font-weight:700;min-width:104px;flex-shrink:0;margin-top:1px}
+.modal-desc{font-size:12px;color:var(--sub);line-height:1.55}
+.modal-close{width:100%;margin-top:14px;padding:14px;border-radius:12px;background:rgba(255,255,255,0.05);border:1px solid var(--border);color:var(--sub);font-family:'Outfit';font-size:15px;font-weight:600;cursor:pointer}
+
+/* POSTER LIGHTBOX */
+.lightbox{
+  position:fixed;inset:0;z-index:500;
+  background:rgba(0,0,0,0.95);backdrop-filter:blur(12px);
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;
+  transition:opacity .22s;
+}
+.lightbox.open{opacity:1;pointer-events:all}
+.lightbox img{
+  max-width:90vw;max-height:88vh;
+  border-radius:14px;
+  box-shadow:0 24px 80px rgba(0,0,0,0.7);
+  transform:scale(0.9);transition:transform .28s cubic-bezier(.34,1.56,.64,1);
+}
+.lightbox.open img{transform:scale(1)}
+.lightbox-close{
+  position:absolute;top:20px;right:20px;
+  width:38px;height:38px;border-radius:50%;
+  background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);
+  color:#fff;font-size:18px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div class="topbar">
+    <div class="topbar-info">
+      <div class="topbar-title">MCU + X-MEN</div>
+      <div class="topbar-sub">WATCHLIST</div>
+    </div>
+    <div class="progress-ring">
+      <svg width="44" height="44" viewBox="0 0 44 44">
+        <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="3"/>
+        <circle id="ringFill" cx="22" cy="22" r="18" fill="none" stroke="#F0C040" stroke-width="3"
+          stroke-dasharray="113.1" stroke-dashoffset="113.1" stroke-linecap="round"
+          style="transition:stroke-dashoffset .5s ease"/>
+      </svg>
+      <div class="ring-text">
+        <div class="ring-pct" id="ringPct">0%</div>
+        <div class="ring-lbl">DONE</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="filter-bar" id="filterBar"></div>
+  <div class="search-wrap">
+    <input class="search-input" type="search" id="searchInput" placeholder="Search movies or characters…" autocomplete="off">
+  </div>
+  <div class="scroll-area" id="scrollArea"></div>
+
+  <div class="bottom-bar">
+    <div class="stat-item">
+      <div class="stat-num" id="statDone" style="color:var(--gold)">0</div>
+      <div class="stat-lbl">WATCHED</div>
+    </div>
+    <div class="stat-div"></div>
+    <div class="stat-item">
+      <div class="stat-num" id="statLeft" style="color:var(--sub)">60</div>
+      <div class="stat-lbl">LEFT</div>
+    </div>
+    <div class="stat-div"></div>
+    <div class="bot-progress">
+      <div class="bot-track"><div class="bot-fill" id="botFill" style="width:0%"></div></div>
+      <div class="bot-txt"><span id="botEss">0 essential left</span><span id="botHrs">~0h left</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal" onclick="closeModal(event)">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-poster-hero" id="modalPosterHero"></div>
+    <div class="modal-body">
+      <div class="modal-title" id="modalTitle"></div>
+      <div class="modal-sub" id="modalSub"></div>
+      <div id="modalChars"></div>
+      <button class="modal-close" onclick="closeModalDirect()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- POSTER LIGHTBOX -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+  <img id="lightboxImg" src="" alt=""/>
+</div>
+
+<script>
+const DATA = [
+  { phase:"FOX X-MEN UNIVERSE", fox:true, sub:"Standalone saga — watch alongside MCU Phase 1–3", movies:[
+    { title:"X-Men", year:2000, priority:"essential", mins:104, note:"Start here. The original team comes together.", chars:[
+      {name:"Wolverine",desc:"Logan — adamantium claws & healing factor. The heart of the team."},
+      {name:"Professor X",desc:"Charles Xavier — telepathic mutant, founder of the X-Men school."},
+      {name:"Magneto",desc:"Erik Lehnsherr — master of magnetism, Xavier's old friend turned enemy."},
+      {name:"Storm",desc:"Ororo Munroe — controls weather. One of the most powerful X-Men."},
+      {name:"Cyclops",desc:"Scott Summers — optic blasts, field leader of the X-Men."},
+      {name:"Jean Grey",desc:"Telekinetic & telepath. Key to future films."},
+      {name:"Mystique",desc:"Raven — shape-shifting mutant working with Magneto."}]},
+    { title:"X2: X-Men United", year:2003, priority:"essential", mins:134, note:"Best of the original trilogy. Wolverine's Weapon X past explored.", chars:[
+      {name:"Wolverine",desc:"Weapon X past explored. Adamantium origins revealed."},
+      {name:"Nightcrawler",desc:"Kurt Wagner — teleporter. Opens with a jaw-dropping White House attack."},
+      {name:"Professor X",desc:"Captured by Stryker, his mind used as a weapon."},
+      {name:"Stryker",desc:"Military villain who created Weapon X & Wolverine's adamantium skeleton."},
+      {name:"Jean Grey",desc:"Her Phoenix powers begin to surface here."},
+      {name:"Magneto",desc:"Briefly allies with the X-Men against a common enemy."}]},
+    { title:"X-Men: The Last Stand", year:2006, priority:"optional", mins:104, note:"Concludes original trilogy. Jean Grey's Phoenix arc.", chars:[
+      {name:"Phoenix",desc:"Jean Grey unleashed — Omega-level destructive force threatening all life."},
+      {name:"Wolverine",desc:"Faces the hardest choice of his life regarding Jean."},
+      {name:"Beast",desc:"Hank McCoy — blue-furred genius, now a government official."},
+      {name:"Angel",desc:"Warren Worthington III — mutant with real wings."},
+      {name:"Juggernaut",desc:"Cain Marko — unstoppable powerhouse."}]},
+    { title:"X-Men Origins: Wolverine", year:2009, priority:"optional", mins:107, note:"Wolverine's backstory from the 19th century to Weapon X.", chars:[
+      {name:"Wolverine",desc:"Full origin — from 19th century to Weapon X program."},
+      {name:"Sabretooth",desc:"Victor Creed — Logan's feral half-brother with similar powers."},
+      {name:"Deadpool",desc:"Wade Wilson before Deadpool. Controversially altered here."},
+      {name:"Gambit",desc:"Remy LeBeau — charges objects with kinetic energy, fan favourite."}]},
+    { title:"X-Men: First Class", year:2011, priority:"essential", mins:132, note:"Great reboot. Young Xavier & Magneto in the 1960s.", chars:[
+      {name:"Young Xavier",desc:"James McAvoy — charming, optimistic Charles before the wheelchair."},
+      {name:"Young Magneto",desc:"Michael Fassbender — Holocaust survivor hunting Nazis. Magnetic and tragic."},
+      {name:"Mystique",desc:"Jennifer Lawrence as young Raven — Xavier's childhood friend."},
+      {name:"Beast",desc:"Nicholas Hoult as young Hank McCoy before his blue transformation."},
+      {name:"Sebastian Shaw",desc:"Kevin Bacon — absorbs energy, the villain who radicalises Magneto."},
+      {name:"Banshee",desc:"Sean Cassidy — sonic scream that lets him fly. Loveable rookie."}]},
+    { title:"The Wolverine", year:2013, priority:"optional", mins:126, note:"Logan in Japan, grappling with mortality.", chars:[
+      {name:"Wolverine",desc:"Logan in Japan after Jean Grey's death."},
+      {name:"Mariko",desc:"Japanese heiress Logan protects. Central to the emotional story."},
+      {name:"Viper",desc:"Mutant assassin who strips Logan of his healing factor."},
+      {name:"Silver Samurai",desc:"Armoured villain who can cut through adamantium."}]},
+    { title:"X-Men: Days of Future Past", year:2014, priority:"essential", mins:132, note:"MUST WATCH. Old + new cast. Resets the X-Men timeline forever.", chars:[
+      {name:"Wolverine",desc:"His consciousness sent back to 1973 to prevent a catastrophic future."},
+      {name:"Young Xavier",desc:"Broken & hopeless in 1973 — Logan must convince him to fight again."},
+      {name:"Young Magneto",desc:"Imprisoned under the Pentagon. Still dangerous & brilliant."},
+      {name:"Mystique",desc:"Her assassination attempt triggers the Sentinel program — must be stopped."},
+      {name:"Quicksilver",desc:"Evan Peters — scene-stealing speedster in the legendary Pentagon escape."},
+      {name:"Sentinels",desc:"Giant mutant-hunting robots — the apocalyptic future threat."},
+      {name:"Old Xavier & Magneto",desc:"Patrick Stewart & Ian McKellen united again."}]},
+    { title:"X-Men: Apocalypse", year:2016, priority:"optional", mins:144, note:"Young team faces an ancient, near-immortal mutant villain.", chars:[
+      {name:"Apocalypse",desc:"En Sabah Nur — ancient mutant who wants to cleanse the world."},
+      {name:"Young Jean Grey",desc:"Sophie Turner — Phoenix powers begin to emerge."},
+      {name:"Young Cyclops",desc:"Tye Sheridan as Scott Summers discovering his powers."},
+      {name:"Young Nightcrawler",desc:"Kodi Smit-McPhee — shy teleporter rescued from a cage fight."},
+      {name:"Psylocke",desc:"Olivia Munn — psychic blades, one of Apocalypse's Four Horsemen."},
+      {name:"Angel",desc:"Ben Hardy as Warren, transformed into the Horseman of Death."}]},
+    { title:"Deadpool", year:2016, priority:"essential", mins:108, note:"Hilarious R-rated anti-hero. Fourth-wall breaking comedy.", chars:[
+      {name:"Deadpool",desc:"Wade Wilson — mercenary given a healing factor. Foul-mouthed and unstoppable."},
+      {name:"Vanessa",desc:"Wade's love interest. Their relationship is the film's heart."},
+      {name:"Ajax",desc:"Francis Freeman — the sadistic villain who created and disfigured Deadpool."},
+      {name:"Colossus",desc:"Gentle giant X-Man made of organic steel. Tries to recruit Deadpool."},
+      {name:"Negasonic Teenage Warhead",desc:"Teenage X-Man who can detonate herself like a bomb."}]},
+    { title:"Logan", year:2017, priority:"essential", mins:137, note:"Masterpiece. Jackman's final Wolverine. Dark & emotional.", chars:[
+      {name:"Logan / Wolverine",desc:"Old, weakened, dying. Hugh Jackman's farewell performance."},
+      {name:"Professor X",desc:"Elderly Xavier with degenerative brain disease — his seizures are lethal."},
+      {name:"X-23 / Laura",desc:"Young girl cloned from Logan's DNA. Fierce, feral, heartbreaking."},
+      {name:"Caliban",desc:"Mutant tracker caring for Xavier. Reluctant but loyal."},
+      {name:"X-24",desc:"A younger, rage-fuelled clone of Logan — his dark mirror."}]},
+    { title:"Deadpool 2", year:2018, priority:"essential", mins:119, note:"Cable arrives. More fun than the first. Sets up D&W.", chars:[
+      {name:"Deadpool",desc:"Wade forming his first team — X-Force — to protect a young mutant."},
+      {name:"Cable",desc:"Josh Brolin — time-travelling cyborg soldier from the future."},
+      {name:"Domino",desc:"Zazie Beetz — her superpower is luck. Effortlessly cool."},
+      {name:"Firefist",desc:"Russell Collins — angry young mutant Deadpool tries to save."},
+      {name:"Juggernaut",desc:"Returns — massive and terrifying."}]},
+    { title:"Dark Phoenix", year:2019, priority:"optional", mins:114, note:"Weaker redo of Phoenix story. Skip if tired.", chars:[
+      {name:"Jean Grey / Phoenix",desc:"Sophie Turner — absorbs a cosmic force that makes her a god."},
+      {name:"Professor X",desc:"His flaws and manipulation of Jean are finally confronted."},
+      {name:"Magneto",desc:"Running a mutant sanctuary. Dragged back into conflict."},
+      {name:"Vuk",desc:"Jessica Chastain — alien villain who wants the Phoenix Force."}]},
+    { title:"The New Mutants", year:2020, priority:"optional", mins:98, note:"Horror-flavored X-Men. Very different tone.", chars:[
+      {name:"Dani Moonstar",desc:"Danielle — Cheyenne mutant who manifests people's deepest fears."},
+      {name:"Magik",desc:"Illyana — Russian mutant with teleportation discs and sorcery."},
+      {name:"Cannonball",desc:"Sam — shoots himself through the air like a rocket."},
+      {name:"Wolfsbane",desc:"Rahne — transforms into a wolf."},
+      {name:"Sunspot",desc:"Roberto — absorbs solar energy."}]}
+  ]},
+  { phase:"PHASE 1", fox:false, sub:"2008–2012 · Avengers Assemble", movies:[
+    { title:"Iron Man", year:2008, priority:"essential", mins:126, note:"Where it all starts. Tony Stark becomes Iron Man.", chars:[
+      {name:"Iron Man",desc:"Tony Stark — billionaire genius who builds a powered armour suit."},
+      {name:"Pepper Potts",desc:"Tony's loyal assistant and eventual love interest."},
+      {name:"War Machine",desc:"James Rhodes — Tony's best friend, military liaison."},
+      {name:"Obadiah Stane",desc:"Iron Monger — Tony's business partner turned villain."},
+      {name:"Nick Fury",desc:"Post-credits: S.H.I.E.L.D. Director. Introduces the Avengers Initiative."}]},
+    { title:"The Incredible Hulk", year:2008, priority:"optional", mins:112, note:"Introduces Hulk. Mostly skippable for beginners.", chars:[
+      {name:"Hulk",desc:"Bruce Banner — gamma-irradiated scientist who transforms into a rage monster."},
+      {name:"Betty Ross",desc:"Bruce's love interest and fellow scientist."},
+      {name:"Abomination",desc:"Emil Blonsky — soldier who gets a monstrous version of Hulk's powers."},
+      {name:"Thunderbolt Ross",desc:"General hunting the Hulk. Returns much later in the MCU."}]},
+    { title:"Iron Man 2", year:2010, priority:"optional", mins:124, note:"Introduces Black Widow & War Machine's armour.", chars:[
+      {name:"Iron Man",desc:"Tony dealing with palladium poisoning and his Iron Man legacy."},
+      {name:"Black Widow",desc:"Natasha Romanoff — undercover S.H.I.E.L.D. spy. Her MCU debut."},
+      {name:"War Machine",desc:"Rhodey gets his own armour and fights alongside Tony."},
+      {name:"Whiplash",desc:"Ivan Vanko — Russian physicist with energy whips, vendetta against Stark."},
+      {name:"Justin Hammer",desc:"Tony's rival weapons manufacturer. Comic relief villain."}]},
+    { title:"Thor", year:2011, priority:"essential", mins:115, note:"Introduces Thor & Loki. Loki is the MCU's best villain.", chars:[
+      {name:"Thor",desc:"Asgardian god of thunder, banished to Earth and stripped of his powers."},
+      {name:"Loki",desc:"Thor's adopted brother — god of mischief. Schemes for the throne."},
+      {name:"Jane Foster",desc:"Astrophysicist who discovers Thor and becomes his love interest."},
+      {name:"Odin",desc:"Anthony Hopkins as the Allfather — hiding a secret from Loki."},
+      {name:"Heimdall",desc:"All-seeing gatekeeper of the Bifrost bridge to Asgard."}]},
+    { title:"Captain America: The First Avenger", year:2011, priority:"essential", mins:124, note:"Steve Rogers origin. Sets up the Tesseract (Space Stone).", chars:[
+      {name:"Captain America",desc:"Steve Rogers — skinny kid from Brooklyn turned super-soldier."},
+      {name:"Bucky Barnes",desc:"Steve's best friend who 'dies'. Returns later as Winter Soldier."},
+      {name:"Peggy Carter",desc:"Steve's love interest and S.H.I.E.L.D. co-founder. Iconic character."},
+      {name:"Red Skull",desc:"Johann Schmidt — HYDRA leader obsessed with the Tesseract."},
+      {name:"Howard Stark",desc:"Tony's father — brilliant inventor helping the war effort."}]},
+    { title:"The Avengers", year:2012, priority:"essential", mins:143, note:"MILESTONE. All heroes unite for the first time. Loki attacks New York.", chars:[
+      {name:"Iron Man",desc:"The team's strategist and most reluctant team player."},
+      {name:"Captain America",desc:"Natural leader, adjusting to the modern world after 70 years frozen."},
+      {name:"Thor",desc:"Returns to Earth to retrieve Loki and the Tesseract."},
+      {name:"Hulk",desc:"'That's my secret — I'm always angry.'"},
+      {name:"Black Widow",desc:"Tactician and spy who holds the team together."},
+      {name:"Hawkeye",desc:"Clint Barton — master archer, S.H.I.E.L.D. agent."},
+      {name:"Loki",desc:"The villain — leads a Chitauri alien army to conquer Earth for Thanos."},
+      {name:"Nick Fury",desc:"Assembles the team and keeps them barely functioning."}]}
+  ]},
+  { phase:"PHASE 2", fox:false, sub:"2013–2015 · Expanding the Universe", movies:[
+    { title:"Iron Man 3", year:2013, priority:"optional", mins:130, note:"Tony deals with PTSD after the alien battle in New York.", chars:[
+      {name:"Iron Man",desc:"Tony suffering anxiety attacks after New York."},
+      {name:"Pepper Potts",desc:"Temporarily given Extremis powers — becomes formidable."},
+      {name:"Mandarin",desc:"Ben Kingsley — 'terrorist' leader with a massive twist."},
+      {name:"War Machine",desc:"Rebranded as Iron Patriot for PR purposes."}]},
+    { title:"Thor: The Dark World", year:2013, priority:"optional", mins:112, note:"Most skippable MCU film. But Loki is great as always.", chars:[
+      {name:"Thor",desc:"Battling dark elves who want to plunge the universe into darkness."},
+      {name:"Loki",desc:"Imprisoned after New York — steals every scene."},
+      {name:"Jane Foster",desc:"Accidentally absorbs the Aether (Reality Stone)."},
+      {name:"Malekith",desc:"Dark Elf leader — the MCU's weakest villain."}]},
+    { title:"Captain America: The Winter Soldier", year:2014, priority:"essential", mins:136, note:"Top-tier MCU. Political thriller. HYDRA twist changes everything.", chars:[
+      {name:"Captain America",desc:"Steve uncovering a conspiracy inside S.H.I.E.L.D. itself."},
+      {name:"Winter Soldier",desc:"Bucky Barnes — brainwashed Soviet assassin. Steve's most painful enemy."},
+      {name:"Black Widow",desc:"Partners with Steve, her loyalties questioned throughout."},
+      {name:"Falcon",desc:"Sam Wilson — veteran with a winged jetpack. Steve's new best friend."},
+      {name:"Nick Fury",desc:"Apparently assassinated. Nothing is as it seems."},
+      {name:"Alexander Pierce",desc:"Robert Redford — S.H.I.E.L.D. leader secretly running HYDRA."}]},
+    { title:"Guardians of the Galaxy", year:2014, priority:"essential", mins:121, note:"Fan favourite. Introduces the cosmic MCU. Incredible soundtrack.", chars:[
+      {name:"Star-Lord",desc:"Peter Quill — human abducted as a child, now a space outlaw."},
+      {name:"Gamora",desc:"Thanos's adopted daughter, trying to escape her past."},
+      {name:"Rocket",desc:"Genetically engineered raccoon — weapons expert, deeply hurt under sarcasm."},
+      {name:"Groot",desc:"Tree creature. Only says 'I am Groot.' Absolutely iconic."},
+      {name:"Drax",desc:"Literal-minded warrior seeking revenge for his family's murder."},
+      {name:"Ronan",desc:"Kree fanatic — the villain, wielding an Infinity Stone."},
+      {name:"Thanos",desc:"Brief cameo — the true power behind Ronan. The coming MCU threat."}]},
+    { title:"Avengers: Age of Ultron", year:2015, priority:"essential", mins:141, note:"Introduces Vision & Scarlet Witch. Leads directly to Civil War.", chars:[
+      {name:"Ultron",desc:"Tony's rogue AI — wants to save the world by destroying humanity."},
+      {name:"Scarlet Witch",desc:"Wanda Maximoff — alters reality and reads minds. Starts villain, becomes Avenger."},
+      {name:"Quicksilver",desc:"Wanda's twin Pietro — speedster who makes a permanent exit."},
+      {name:"Vision",desc:"Synthetic android with the Mind Stone in his forehead."},
+      {name:"All Avengers",desc:"Iron Man, Cap, Thor, Hulk, Black Widow, Hawkeye all return."}]},
+    { title:"Ant-Man", year:2015, priority:"optional", mins:117, note:"Fun heist film. Scott Lang becomes Ant-Man. Quantum Realm introduced.", chars:[
+      {name:"Ant-Man",desc:"Scott Lang — thief turned hero who can shrink to ant-size."},
+      {name:"Hank Pym",desc:"Original Ant-Man, inventor of Pym Particles."},
+      {name:"Hope Van Dyne",desc:"Hank's daughter, more capable than Scott, trains him reluctantly."},
+      {name:"Yellowjacket",desc:"Darren Cross — Hank's protégé gone wrong, weaponising the shrinking tech."}]}
+  ]},
+  { phase:"PHASE 3", fox:false, sub:"2016–2019 · The Infinity Saga", movies:[
+    { title:"Captain America: Civil War", year:2016, priority:"essential", mins:147, note:"Avengers split apart. Spider-Man & Black Panther introduced.", chars:[
+      {name:"Captain America",desc:"Defends Bucky at all costs, fracturing the team."},
+      {name:"Iron Man",desc:"Supports government oversight — discovers a secret that breaks everything."},
+      {name:"Spider-Man",desc:"Tom Holland's debut — 15-year-old Peter Parker steals every scene."},
+      {name:"Black Panther",desc:"T'Challa — king of Wakanda, hunting Bucky for his father's murder."},
+      {name:"Winter Soldier",desc:"Bucky — the centre of the conflict, his past used against him."},
+      {name:"Zemo",desc:"Daniel Brühl — not a superhero, just a grieving father. Smartest MCU villain."},
+      {name:"Black Widow",desc:"Caught between both sides, trying to preserve the team."}]},
+    { title:"Doctor Strange", year:2016, priority:"essential", mins:115, note:"Opens up magic & the multiverse. Sorcerer Supreme origin.", chars:[
+      {name:"Doctor Strange",desc:"Stephen Strange — arrogant surgeon who becomes the Sorcerer Supreme."},
+      {name:"Ancient One",desc:"Tilda Swinton — Strange's enigmatic, centuries-old teacher."},
+      {name:"Wong",desc:"Strange's loyal librarian and fellow sorcerer. Returns throughout MCU."},
+      {name:"Mordo",desc:"Strange's mentor who later turns against him."},
+      {name:"Dormammu",desc:"Cosmic entity from the Dark Dimension — the film's enormous threat."}]},
+    { title:"Guardians of the Galaxy Vol. 2", year:2017, priority:"essential", mins:136, note:"Star-Lord's father revealed. Yondu's arc will destroy you.", chars:[
+      {name:"Star-Lord",desc:"Discovers his father — a living planet — and what that truly means."},
+      {name:"Ego",desc:"Kurt Russell as Ego the Living Planet — Peter's god-like, terrifying father."},
+      {name:"Nebula",desc:"Gamora's cyborg sister. Their rivalry becomes the emotional core."},
+      {name:"Yondu",desc:"Peter's blue-skinned space-pirate father figure. Most heartbreaking arc."},
+      {name:"Mantis",desc:"Empathic alien raised by Ego. Awkward, kind, scene-stealing."},
+      {name:"Baby Groot",desc:"Resurrected as an adorable tiny Groot."}]},
+    { title:"Spider-Man: Homecoming", year:2017, priority:"essential", mins:133, note:"Tom Holland's Peter Parker. High school superhero comedy.", chars:[
+      {name:"Spider-Man",desc:"Peter Parker — 15-year-old balancing homework and being a hero."},
+      {name:"Vulture",desc:"Adrian Toomes — working-class villain. Michael Keaton is terrifying."},
+      {name:"Iron Man",desc:"Tony as Peter's reluctant mentor. 'If you're nothing without the suit...'"},
+      {name:"Ned",desc:"Peter's best friend and 'guy in the chair'. Comedy gold."},
+      {name:"Happy Hogan",desc:"Tony's driver/security, now Peter's reluctant handler."}]},
+    { title:"Thor: Ragnarok", year:2017, priority:"essential", mins:130, note:"Best Thor film by far. Hilarious, colourful, action-packed.", chars:[
+      {name:"Thor",desc:"Loses his hammer, finds he doesn't need it. Finally becomes funny."},
+      {name:"Loki",desc:"At his scheming, scene-stealing best."},
+      {name:"Hela",desc:"Cate Blanchett — Thor's secret sister, goddess of death. Destroys Mjolnir bare-handed."},
+      {name:"Hulk",desc:"Has been a gladiator on Sakaar for two years. Best Hulk in the MCU."},
+      {name:"Valkyrie",desc:"Tessa Thompson — hard-drinking Asgardian warrior. Brilliant introduction."},
+      {name:"Grandmaster",desc:"Jeff Goldblum — eccentric ruler of the junk planet Sakaar."}]},
+    { title:"Black Panther", year:2018, priority:"essential", mins:134, note:"Iconic. Wakanda introduced. Cultural phenomenon.", chars:[
+      {name:"Black Panther",desc:"T'Challa — newly crowned king of Wakanda, protector of his people."},
+      {name:"Killmonger",desc:"Erik Stevens — T'Challa's cousin. The MCU's most sympathetic villain."},
+      {name:"Shuri",desc:"T'Challa's genius sister. Funnier than Tony Stark."},
+      {name:"Okoye",desc:"Head of the Dora Milaje — Wakanda's all-female royal guard."},
+      {name:"Nakia",desc:"T'Challa's ex, a War Dog spy, the film's moral voice."},
+      {name:"M'Baku",desc:"Mountain tribe leader. Starts as antagonist, becomes fan favourite."}]},
+    { title:"Avengers: Infinity War", year:2018, priority:"essential", mins:149, note:"MAJOR EVENT. Thanos collects all Infinity Stones. Jaw-dropping ending.", chars:[
+      {name:"Thanos",desc:"Josh Brolin — the MAIN character. Wants to halve the universe's population."},
+      {name:"Iron Man",desc:"Tony faces the enemy he's feared since The Avengers."},
+      {name:"Doctor Strange",desc:"Views 14 million possible futures. Knows what must happen."},
+      {name:"Spider-Man",desc:"Joins the battle on Titan. His ending is gut-wrenching."},
+      {name:"Thor",desc:"Goes to forge Stormbreaker — a weapon to fight Thanos."},
+      {name:"Gamora",desc:"Her relationship with Thanos is the emotional core. A devastating sacrifice."},
+      {name:"All Avengers + Guardians",desc:"Every MCU hero appears. Half won't make it to the end."}]},
+    { title:"Ant-Man and the Wasp", year:2018, priority:"optional", mins:118, note:"Fun heist sequel. Sets up the Quantum Realm for Endgame.", chars:[
+      {name:"Ant-Man",desc:"Scott under house arrest after Civil War, pulled back in."},
+      {name:"Wasp",desc:"Hope Van Dyne finally gets her own suit."},
+      {name:"Ghost",desc:"Ava Starr — molecularly unstable, phasing through objects in pain."},
+      {name:"Janet Van Dyne",desc:"Michelle Pfeiffer as the original Wasp — rescued from the Quantum Realm."}]},
+    { title:"Captain Marvel", year:2019, priority:"essential", mins:124, note:"Carol Danvers origin. Set in the 1990s. Watch before Endgame.", chars:[
+      {name:"Captain Marvel",desc:"Carol Danvers — amnesiac Kree soldier who discovers she's Earth's most powerful hero."},
+      {name:"Nick Fury",desc:"Young 1990s Fury — how he lost his eye is finally (absurdly) revealed."},
+      {name:"Talos",desc:"Ben Mendelsohn — Skrull leader who subverts every villain expectation."},
+      {name:"Yon-Rogg",desc:"Jude Law — Carol's mentor. Something is off about him."},
+      {name:"Goose",desc:"The cat. Not a cat. Most dangerous character in the film."}]},
+    { title:"Avengers: Endgame", year:2019, priority:"essential", mins:181, note:"THE FINALE. 3 hours of pure payoff. Watch everything before this.", chars:[
+      {name:"Iron Man",desc:"Tony's arc ends here. 'I am Iron Man' — most earned MCU moment."},
+      {name:"Captain America",desc:"Steve's perfect ending. He finally gets his dance."},
+      {name:"Thor",desc:"Fat, broken Thor finding himself again. Unexpectedly moving."},
+      {name:"Hulk",desc:"Smart Hulk — Bruce finally merges both sides of himself."},
+      {name:"Thanos",desc:"A 2014 Thanos who hasn't done anything yet — making him scarier."},
+      {name:"Black Widow",desc:"Makes the ultimate sacrifice on Vormir."},
+      {name:"All MCU Heroes",desc:"Every surviving hero returns for the final battle. Pure cinema."}]},
+    { title:"Spider-Man: Far From Home", year:2019, priority:"essential", mins:129, note:"Post-Endgame. Peter grieves Tony. Sets up the Multiverse era.", chars:[
+      {name:"Spider-Man",desc:"Peter just wanting a school trip to Europe."},
+      {name:"Mysterio",desc:"Quentin Beck — appears to be a hero from another universe. Jake Gyllenhaal."},
+      {name:"Nick Fury",desc:"Recruiting Peter for a mission. Something is different about him."},
+      {name:"MJ",desc:"Zendaya as Michelle Jones — Peter's love interest finally revealed."}]}
+  ]},
+  { phase:"PHASE 4", fox:false, sub:"2021–2022 · Multiverse Begins", movies:[
+    { title:"WandaVision (Series)", year:2021, priority:"essential", mins:270, note:"Watch first in Phase 4. Wanda's grief. Leads directly into MoM.", chars:[
+      {name:"Wanda / Scarlet Witch",desc:"Grieving Vision, Wanda unconsciously traps a town in a TV reality."},
+      {name:"Vision",desc:"Wanda's reconstructed Vision — doesn't know what he is."},
+      {name:"Agatha Harkness",desc:"Kathryn Hahn — nosy neighbour hiding a sinister secret. Best MCU villain intro."},
+      {name:"Monica Rambeau",desc:"Maria's daughter, now a S.W.O.R.D. agent investigating the anomaly."}]},
+    { title:"Falcon & Winter Soldier (Series)", year:2021, priority:"optional", mins:270, note:"Sam Wilson's Captain America journey. Bucky's path to redemption.", chars:[
+      {name:"Falcon / Sam Wilson",desc:"Wrestling with whether to take up the Captain America shield."},
+      {name:"Winter Soldier",desc:"Bucky working through his past and his list of amends."},
+      {name:"John Walker",desc:"The government's new Captain America — not ready for the shield."},
+      {name:"Zemo",desc:"Daniel Brühl returns — suave, funny, and still dangerous."},
+      {name:"Sharon Carter",desc:"Peggy's niece, living in exile after Civil War. A different person now."}]},
+    { title:"Loki Season 1 (Series)", year:2021, priority:"essential", mins:270, note:"Introduces the multiverse & TVA. Critical for all of Phase 4-5.", chars:[
+      {name:"Loki",desc:"2012 Loki after escaping — arrested by the TVA and sent on a mission."},
+      {name:"Sylvie",desc:"A female Loki variant — fierce, distrustful, obsessed with revenge on the TVA."},
+      {name:"Mobius",desc:"Owen Wilson as TVA analyst who becomes Loki's unexpected ally."},
+      {name:"He Who Remains",desc:"Jonathan Majors — the man behind the TVA. His death opens the multiverse."}]},
+    { title:"Black Widow", year:2021, priority:"optional", mins:134, note:"Natasha's backstory. Set before Endgame. Introduces Yelena Belova.", chars:[
+      {name:"Black Widow",desc:"Natasha dismantling the Red Room programme — set between Civil War & Infinity War."},
+      {name:"Yelena Belova",desc:"Florence Pugh — funnier, more unhinged, destined to replace Natasha."},
+      {name:"Red Guardian",desc:"David Harbour as Russia's Captain America — buffoon dad energy, actually touching."},
+      {name:"Dreykov",desc:"The Red Room's hidden controller — the villain behind the Black Widow programme."}]},
+    { title:"Shang-Chi", year:2021, priority:"essential", mins:132, note:"New hero joins. Incredible action. One of the best MCU origin films.", chars:[
+      {name:"Shang-Chi",desc:"Simu Liu — valet parker hiding from his past as an assassin's son."},
+      {name:"Xu Wenwu",desc:"Tony Leung — 1000-year-old father, real wielder of the Ten Rings. MCU's best dad-villain."},
+      {name:"Katy",desc:"Awkwafina as Shang-Chi's best friend — hilarious and unexpectedly brave."},
+      {name:"Xialing",desc:"Shang-Chi's fierce sister, running her own underground fight club."},
+      {name:"Trevor Slattery",desc:"The fake Mandarin from Iron Man 3 — now a prisoner, comic relief gold."}]},
+    { title:"What If...? (Series)", year:2021, priority:"optional", mins:200, note:"Animated anthology. Alternate-universe MCU. Fun but mostly optional.", chars:[
+      {name:"The Watcher",desc:"Jeffrey Wright — cosmic observer. Bound by rules not to intervene."},
+      {name:"Various Heroes",desc:"Every MCU character reimagined — Captain Carter, Star-Lord T'Challa, Zombie Iron Man."},
+      {name:"Ultron (Infinity Stones)",desc:"The finale villain — Ultron who actually won, wielding all six Infinity Stones."}]},
+    { title:"Eternals", year:2021, priority:"optional", mins:157, note:"New ancient beings. Beautiful visuals. Divisive among MCU fans.", chars:[
+      {name:"Sersi",desc:"Gemma Chan — kind, powerful Eternal who can transmute matter."},
+      {name:"Ikaris",desc:"Richard Madden — Superman-like powerhouse. His arc has a dark twist."},
+      {name:"Thena",desc:"Angelina Jolie — greatest warrior Eternal, struggling with cosmic PTSD."},
+      {name:"Gilgamesh",desc:"Don Lee — the strongest Eternal. Gentle giant protecting Thena."},
+      {name:"Kingo",desc:"Kumail Nanjiani — Eternal living as a Bollywood star."},
+      {name:"Phastos",desc:"Brian Tyree Henry — inventor Eternal. MCU's first openly gay superhero."},
+      {name:"Druig",desc:"Barry Keoghan — can control minds. Brooding, morally grey."},
+      {name:"Sprite",desc:"Lia McHugh — child Eternal with illusion powers. Secretly resentful."},
+      {name:"Makkari",desc:"Lauren Ridloff — deaf speedster. Fastest being alive."},
+      {name:"Arishem",desc:"Enormous Celestial — created the Eternals for a dark purpose."}]},
+    { title:"Hawkeye (Series)", year:2021, priority:"optional", mins:270, note:"Clint & Kate Bishop. Introduces Kingpin to the MCU. Fun holiday tone.", chars:[
+      {name:"Hawkeye",desc:"Clint Barton trying to get home for Christmas, haunted by his Ronin past."},
+      {name:"Kate Bishop",desc:"Hailee Steinfeld — Clint's biggest fan, now his accidental partner."},
+      {name:"Yelena Belova",desc:"Florence Pugh returns — hired to kill Clint."},
+      {name:"Kingpin",desc:"Vincent D'Onofrio — Wilson Fisk, criminal mastermind, returns from Daredevil."},
+      {name:"Maya Lopez / Echo",desc:"Alaqua Cox — Kingpin's deaf enforcer with her own backstory."}]},
+    { title:"Spider-Man: No Way Home", year:2021, priority:"essential", mins:148, note:"MULTIVERSE EXPLODES. All three Spider-Men. Villains from all universes.", chars:[
+      {name:"Spider-Man (Holland)",desc:"Peter's identity exposed. A spell gone wrong shatters the multiverse."},
+      {name:"Spider-Man (Maguire)",desc:"The original Spider-Man returns. Calm, wise, healing."},
+      {name:"Spider-Man (Garfield)",desc:"The Amazing Spider-Man returns — gets his redemption moment. Made audiences cry."},
+      {name:"Doctor Strange",desc:"Casts the multiverse spell that causes everything to unravel."},
+      {name:"Green Goblin",desc:"Willem Dafoe returns — the most dangerous villain in the film. Unforgettable."},
+      {name:"Doctor Octopus",desc:"Alfred Molina returns. Gets a redemption arc."},
+      {name:"Electro",desc:"Jamie Foxx returns, redesigned and funnier."},
+      {name:"MJ & Ned",desc:"Peter's best friends — their fates are the entire emotional stakes."}]},
+    { title:"Doctor Strange: Multiverse of Madness", year:2022, priority:"essential", mins:126, note:"Professor Xavier (Patrick Stewart) appears! FOX/MCU bridge moment.", chars:[
+      {name:"Doctor Strange",desc:"Haunted by a dream that's real — must protect America Chavez."},
+      {name:"Scarlet Witch",desc:"Wanda has fully become the Scarlet Witch, now the film's terrifying villain."},
+      {name:"America Chavez",desc:"Xochitl Gomez — teenager who can punch star-shaped portals between universes."},
+      {name:"Professor X",desc:"Patrick Stewart returns as Charles Xavier — the FOX/MCU bridge moment."},
+      {name:"Illuminati",desc:"Alternate-universe heroes — Reed Richards, Black Bolt, Captain Carter."}]},
+    { title:"Moon Knight (Series)", year:2022, priority:"optional", mins:240, note:"Egyptian mythology. Oscar Isaac gives a performance for the ages.", chars:[
+      {name:"Marc Spector / Moon Knight",desc:"Oscar Isaac — mercenary with DID, avatar of moon god Khonshu."},
+      {name:"Steven Grant",desc:"Marc's British alter-ego — mild-mannered museum worker. The comedy of the series."},
+      {name:"Khonshu",desc:"F. Murray Abraham — Egyptian moon god, Marc's demanding morally ambiguous boss."},
+      {name:"Arthur Harrow",desc:"Ethan Hawke — cult leader channelling the goddess Ammit."}]},
+    { title:"Thor: Love and Thunder", year:2022, priority:"optional", mins:119, note:"Jane Foster returns as Mighty Thor. Gorr is a phenomenal villain.", chars:[
+      {name:"Thor",desc:"Finding himself after Endgame."},
+      {name:"Mighty Thor",desc:"Natalie Portman as Jane Foster — called by Mjolnir, terminally ill but powerful."},
+      {name:"Gorr the God Butcher",desc:"Christian Bale — grieving father who decides all gods must die."},
+      {name:"Valkyrie",desc:"King of New Asgard, dealing with politics instead of battles."},
+      {name:"Korg",desc:"Thor's best friend. Stone creature. Steals scenes constantly."}]},
+    { title:"She-Hulk (Series)", year:2022, priority:"optional", mins:240, note:"Comedy-focused. Bruce Banner's lawyer cousin. Very meta and self-aware.", chars:[
+      {name:"She-Hulk",desc:"Jennifer Walters — lawyer who gets Bruce's blood and becomes a Hulk."},
+      {name:"Bruce Banner / Smart Hulk",desc:"Jen's cousin, her mentor. Returns to space mid-series."},
+      {name:"Abomination",desc:"Emil Blonsky returns, reformed and running a spiritual retreat."},
+      {name:"Daredevil",desc:"Matt Murdock cameos in yellow suit, teasing his own upcoming show."}]},
+    { title:"Ms. Marvel (Series)", year:2022, priority:"optional", mins:210, note:"Kamala Khan's origin story. Leads directly into The Marvels.", chars:[
+      {name:"Ms. Marvel",desc:"Kamala Khan — Pakistani-American teen from Jersey City with crystal-based powers."},
+      {name:"Bruno",desc:"Kamala's best friend, genius who helps her understand her powers."},
+      {name:"Najma",desc:"Kamala's ancestor from a group of displaced beings called the Clandestines."},
+      {name:"Damage Control",desc:"Government agency monitoring new powered people."}]},
+    { title:"Black Panther: Wakanda Forever", year:2022, priority:"essential", mins:161, note:"Tribute to Chadwick Boseman. Introduces Namor & Ironheart.", chars:[
+      {name:"Shuri",desc:"T'Challa's sister takes centre stage — grief-stricken, close to vengeance."},
+      {name:"Namor",desc:"Tenoch Huerta — king of underwater Talokan. Anti-villain with real motivation."},
+      {name:"Okoye",desc:"The Dora Milaje general, stripped of rank after failing to protect the king."},
+      {name:"Riri Williams / Ironheart",desc:"MIT genius who builds her own Iron Man suit. Future Disney+ series."},
+      {name:"Queen Ramonda",desc:"Angela Bassett — grieving queen. Powerhouse performance."}]}
+  ]},
+  { phase:"PHASE 5", fox:false, sub:"2023–2025 · Multiverse Saga Deepens", movies:[
+    { title:"Ant-Man and the Wasp: Quantumania", year:2023, priority:"essential", mins:124, note:"Introduces Kang the Conqueror — the MCU's next Thanos.", chars:[
+      {name:"Ant-Man",desc:"Scott sucked into the Quantum Realm with his family."},
+      {name:"Kang the Conqueror",desc:"Jonathan Majors — time-conquering tyrant exiled to the Quantum Realm."},
+      {name:"Cassie Lang",desc:"Scott's now-teenage daughter with her own size-changing tech."},
+      {name:"Wasp",desc:"Hope, fully established as Scott's equal partner."},
+      {name:"M.O.D.O.K.",desc:"Darren Cross, the Yellowjacket, horribly mutated into a giant flying head."}]},
+    { title:"Guardians of the Galaxy Vol. 3", year:2023, priority:"essential", mins:150, note:"Perfect emotional send-off. Rocket's origin revealed. Bring tissues.", chars:[
+      {name:"Rocket",desc:"Finally gets his origin — experimented on as a child. The film's emotional heart."},
+      {name:"High Evolutionary",desc:"Chukwudi Iwuji — obsessive creator god who built Rocket."},
+      {name:"Star-Lord",desc:"Grieving Gamora (who doesn't remember him), learning to let go."},
+      {name:"Gamora (2014)",desc:"The version who survived — not Peter's Gamora."},
+      {name:"Adam Warlock",desc:"Will Poulter — golden powerhouse, naive as a child despite his power."},
+      {name:"Nebula",desc:"Now a true Guardian. Her found-family arc is complete."}]},
+    { title:"Secret Invasion (Series)", year:2023, priority:"optional", mins:240, note:"Nick Fury's solo spy story. Skrull infiltration of world governments.", chars:[
+      {name:"Nick Fury",desc:"Samuel L. Jackson in his biggest MCU role — older, isolated, confronting failures."},
+      {name:"Gravik",desc:"Radical Skrull leader who's infiltrated every level of government."},
+      {name:"Maria Hill",desc:"Cobie Smulders returns. Her fate in episode one is genuinely shocking."},
+      {name:"Talos",desc:"Ben Mendelsohn — Fury's old Skrull ally caught between two worlds."},
+      {name:"G'iah",desc:"Talos's daughter with a shocking power upgrade in the finale."}]},
+    { title:"Loki Season 2 (Series)", year:2023, priority:"essential", mins:240, note:"Major multiverse payoff. Loki's most emotional, satisfying arc.", chars:[
+      {name:"Loki",desc:"Time-slipping uncontrollably while trying to save the TVA."},
+      {name:"Sylvie",desc:"Living a quiet life — doesn't want to be involved."},
+      {name:"Mobius",desc:"Owen Wilson — Loki's loyal partner, doesn't remember anything."},
+      {name:"Victor Timely",desc:"Jonathan Majors as a quiet inventor Kang variant — key to fixing the timeline."},
+      {name:"OB",desc:"Ouroboros — TVA's eccentric handbook author. Ke Huy Quan brings pure joy."}]},
+    { title:"The Marvels", year:2023, priority:"optional", mins:105, note:"Carol, Monica & Ms. Marvel team up when their powers entangle.", chars:[
+      {name:"Captain Marvel",desc:"Carol Danvers — powers entangled with two others, forced to cooperate."},
+      {name:"Monica Rambeau",desc:"Maria's daughter with light-manipulation powers, complicated feelings about Carol."},
+      {name:"Ms. Marvel",desc:"Kamala Khan — living her dream, fighting alongside her idol."},
+      {name:"Dar-Benn",desc:"Kree villain tearing holes between universes using a quantum band."}]},
+    { title:"Echo (Series)", year:2024, priority:"optional", mins:200, note:"Maya Lopez's story. Ties to Hawkeye. Kingpin fully enters the MCU.", chars:[
+      {name:"Echo / Maya Lopez",desc:"Alaqua Cox — deaf Native American confronting her family's connection to Kingpin."},
+      {name:"Kingpin",desc:"Vincent D'Onofrio — Wilson Fisk cementing his MCU role, more powerful than ever."},
+      {name:"Chula",desc:"Maya's grandmother — connected to ancient Choctaw powers."}]},
+    { title:"Deadpool & Wolverine", year:2024, priority:"essential", mins:128, note:"FOX officially meets MCU. Hugh Jackman's Wolverine enters Marvel Studios.", chars:[
+      {name:"Deadpool",desc:"Wade Wilson recruited by the TVA — must find a Wolverine to save his world."},
+      {name:"Wolverine",desc:"A broken, self-loathing Logan from a failed universe. His redemption is the film's heart."},
+      {name:"Cassandra Nova",desc:"Emma Corrin — Charles Xavier's evil twin, banished to a multiverse void."},
+      {name:"TVA Agent Paradox",desc:"Matthew Macfadyen — bureaucratic TVA handler dragging Wade into this mess."},
+      {name:"Cameos",desc:"Multiple beloved FOX-era characters return. No spoilers — just watch it."}]},
+    { title:"Captain America: Brave New World", year:2025, priority:"essential", mins:118, note:"Sam Wilson as the new Cap. Red Hulk arrives. Sets up Phase 6.", chars:[
+      {name:"Captain America (Sam Wilson)",desc:"Sam navigating international politics as the new Captain America."},
+      {name:"Red Hulk",desc:"Thaddeus Ross — the old General has transformed into something monstrous."},
+      {name:"Leader",desc:"Tim Blake Nelson — teased since The Incredible Hulk, finally arrives."},
+      {name:"Joaquin Torres",desc:"Sam's partner, the new Falcon."}]},
+    { title:"Thunderbolts*", year:2025, priority:"essential", mins:127, note:"Anti-hero team assembles. Sentry arrives. Leads to Avengers: Doomsday.", chars:[
+      {name:"Yelena Belova",desc:"Florence Pugh leads the team — dragged into a government operation."},
+      {name:"Bucky Barnes",desc:"Finally free of Winter Soldier programming, now a congressman."},
+      {name:"Sentry / Bob Reynolds",desc:"Lewis Pullman — the MCU's most powerful being, and deeply unstable."},
+      {name:"Ghost",desc:"Ava Starr returns from Ant-Man & the Wasp."},
+      {name:"Red Guardian",desc:"David Harbour's Alexei — bumbling, loveable, surprisingly useful."},
+      {name:"US Agent",desc:"John Walker — disgraced Captain America trying to find his place."}]}
+  ]},
+  { phase:"PHASE 6", fox:false, sub:"2025–2027 · The Multiverse Saga Finale", movies:[
+    { title:"The Fantastic Four: First Steps", year:2025, priority:"essential", mins:130, note:"Marvel's First Family arrives. Set in a retro-futuristic 1960s world. Galactus threatens Earth.", chars:[
+      {name:"Mr. Fantastic",desc:"Reed Richards — the team's leader, genius scientist with a stretchy body."},
+      {name:"Invisible Woman",desc:"Sue Storm — Reed's wife, arguably the team's most powerful member."},
+      {name:"Human Torch",desc:"Johnny Storm — Sue's brother, can engulf himself in flames and fly."},
+      {name:"The Thing",desc:"Ben Grimm — Reed's best friend, transformed into an orange rocky powerhouse."},
+      {name:"Galactus",desc:"Ralph Ineson — world-devouring cosmic god. The most powerful villain the MCU has faced."},
+      {name:"Silver Surfer",desc:"Julia Garner — Galactus's enigmatic herald, torn between duty and conscience."}]},
+    { title:"Avengers: Doomsday", year:2026, priority:"essential", mins:150, note:"The Avengers, X-Men, Fantastic Four & Thunderbolts all unite to fight Doctor Doom.", chars:[
+      {name:"Doctor Doom",desc:"Robert Downey Jr. returns — not as Tony Stark but as the MCU's new ultimate villain."},
+      {name:"Captain America",desc:"Sam Wilson leads Earth's mightiest heroes into the biggest battle yet."},
+      {name:"Thor",desc:"Chris Hemsworth returns for the climactic Multiverse Saga battle."},
+      {name:"Mr. Fantastic",desc:"Pedro Pascal — Reed Richards brings the Fantastic Four into the wider MCU."},
+      {name:"Wolverine",desc:"Hugh Jackman's Wolverine now fully part of the MCU."},
+      {name:"All MCU Heroes",desc:"Avengers, Wakandans, Fantastic Four, Thunderbolts & X-Men all assemble."}]},
+    { title:"Spider-Man: Brand New Day", year:2026, priority:"essential", mins:130, note:"Four years after No Way Home. Peter is alone, forgotten by the world. A new threat forces him back.", chars:[
+      {name:"Spider-Man",desc:"Tom Holland — Peter Parker living completely alone, the world has forgotten he exists."},
+      {name:"MJ",desc:"Zendaya returns — though Peter erased himself from her memory."},
+      {name:"Daredevil",desc:"Charlie Cox — Matt Murdock, one of the few who helps Peter navigate his new life."},
+      {name:"New Villain",desc:"A powerful new threat emerges from the shadows of Peter's forgotten past."}]},
+    { title:"Avengers: Secret Wars", year:2027, priority:"essential", mins:180, note:"THE FINALE. The ultimate conclusion to the Multiverse Saga. All realities collide.", chars:[
+      {name:"Doctor Doom",desc:"Robert Downey Jr. — now wielding god-like power over all realities."},
+      {name:"All Surviving Heroes",desc:"Every hero from every universe unites for the final battle of the Multiverse Saga."},
+      {name:"Spider-Man",desc:"Tom Holland — Peter's journey across the saga reaches its conclusion."},
+      {name:"Mr. Fantastic",desc:"Pedro Pascal — Reed Richards at the centre of the multiverse conflict."},
+      {name:"Wolverine",desc:"Hugh Jackman — Logan's role in the finale of the Multiverse Saga."}]}
+  ]}
+];
+
+// ── STATE ──
+const LS = "mcu-v3";
+let watched = new Set(JSON.parse(localStorage.getItem(LS) || "[]"));
+let activeFilter = "all";
+let searchQuery = "";
+function save() { localStorage.setItem(LS, JSON.stringify([...watched])); }
+
+const allMovies = [];
+DATA.forEach(s => s.movies.forEach(m => allMovies.push({...m, fox:s.fox})));
+const TOTAL = allMovies.length;
+
+// ── TMDB POSTER FETCHER ──
+// Your TMDB API key — free, read-only, safe to embed in a personal app
+const TMDB_KEY = "14a0ee22b6f7704b793116e9bcff6080";
+const TMDB_IMG = "https://image.tmdb.org/t/p/w342";
+
+// TMDB IDs for every film/show — { key: [id, "movie"|"tv"] }
+const TMDB_IDS = {
+  // ── FOX X-MEN ──
+  "X-Men-2000":                               [36657,  "movie"],
+  "X2: X-Men United-2003":                    [36658,  "movie"],
+  "X-Men: The Last Stand-2006":               [36668,  "movie"],
+  "X-Men Origins: Wolverine-2009":            [2080,   "movie"],
+  "X-Men: First Class-2011":                  [49538,  "movie"],
+  "The Wolverine-2013":                       [76170,  "movie"],
+  "X-Men: Days of Future Past-2014":          [127585, "movie"],
+  "X-Men: Apocalypse-2016":                   [246655, "movie"],
+  "Deadpool-2016":                            [293660, "movie"],
+  "Logan-2017":                               [263115, "movie"],
+  "Deadpool 2-2018":                          [383498, "movie"],
+  "Dark Phoenix-2019":                        [320288, "movie"],
+  "The New Mutants-2020":                     [340102, "movie"],
+  // ── MCU PHASE 1 ──
+  "Iron Man-2008":                            [1726,   "movie"],
+  "The Incredible Hulk-2008":                 [1724,   "movie"],
+  "Iron Man 2-2010":                          [10138,  "movie"],
+  "Thor-2011":                                [10195,  "movie"],
+  "Captain America: The First Avenger-2011":  [1771,   "movie"],
+  "The Avengers-2012":                        [24428,  "movie"],
+  // ── MCU PHASE 2 ──
+  "Iron Man 3-2013":                          [68721,  "movie"],
+  "Thor: The Dark World-2013":                [76338,  "movie"],
+  "Captain America: The Winter Soldier-2014": [100402, "movie"],
+  "Guardians of the Galaxy-2014":             [118340, "movie"],
+  "Avengers: Age of Ultron-2015":             [99861,  "movie"],
+  "Ant-Man-2015":                             [102899, "movie"],
+  "Guardians of the Galaxy Vol. 2-2017":      [283995, "movie"],
+  // ── MCU PHASE 3 ──
+  "Captain America: Civil War-2016":          [271110, "movie"],
+  "Doctor Strange-2016":                      [284052, "movie"],
+  "Spider-Man: Homecoming-2017":              [315635, "movie"],
+  "Thor: Ragnarok-2017":                      [284053, "movie"],
+  "Black Panther-2018":                       [284054, "movie"],
+  "Avengers: Infinity War-2018":              [299536, "movie"],
+  "Ant-Man and the Wasp-2018":                [363088, "movie"],
+  "Captain Marvel-2019":                      [299537, "movie"],
+  "Avengers: Endgame-2019":                   [299534, "movie"],
+  "Spider-Man: Far From Home-2019":           [429617, "movie"],
+  // ── MCU PHASE 4 ──
+  "WandaVision (Series)-2021":                [85271,  "tv"],
+  "Falcon & Winter Soldier (Series)-2021":    [88396,  "tv"],
+  "Loki Season 1 (Series)-2021":              [84958,  "tv"],
+  "Black Widow-2021":                         [497698, "movie"],
+  "Shang-Chi-2021":                           [566525, "movie"],
+  "What If...? (Series)-2021":                [91363,  "tv"],
+  "Eternals-2021":                            [524434, "movie"],
+  "Hawkeye (Series)-2021":                    [88329,  "tv"],
+  "Spider-Man: No Way Home-2021":             [634649, "movie"],
+  "Doctor Strange: Multiverse of Madness-2022":[453395,"movie"],
+  "Moon Knight (Series)-2022":                [92749,  "tv"],
+  "Thor: Love and Thunder-2022":              [616037, "movie"],
+  "She-Hulk (Series)-2022":                   [92783,  "tv"],
+  "Ms. Marvel (Series)-2022":                 [92782,  "tv"],
+  "Black Panther: Wakanda Forever-2022":      [505642, "movie"],
+  // ── MCU PHASE 5 ──
+  "Ant-Man and the Wasp: Quantumania-2023":   [640146, "movie"],
+  "Guardians of the Galaxy Vol. 3-2023":      [447365, "movie"],
+  "Secret Invasion (Series)-2023":            [114472, "tv"],
+  "Loki Season 2 (Series)-2023":              [84958,  "tv"],
+  "The Marvels-2023":                         [609681, "movie"],
+  "Echo (Series)-2024":                       [122226, "tv"],
+  "Deadpool & Wolverine-2024":                [533535, "movie"],
+  "Captain America: Brave New World-2025":    [822119, "movie"],
+  "Thunderbolts*-2025":                       [986056, "movie"],
+  // ── MCU PHASE 6 ──
+  "The Fantastic Four: First Steps-2025":     [617126,  "movie"],
+  "Avengers: Doomsday-2026":                  [1003596, "movie"],
+  "Spider-Man: Brand New Day-2026":           [969681,  "movie"],
+  "Avengers: Secret Wars-2027":               [1003598, "movie"],
+};
+
+// Runtime poster cache
+let POSTERS = {};
+const POSTER_CACHE_KEY = "mcu-posters-tmdb-v5";
+
+function applyPoster(key, src) {
+  POSTERS[key] = src;
+  document.querySelectorAll(`[data-movie-id="${CSS.escape(key)}"] .card-poster`).forEach(el => {
+    el.dataset.poster = src;
+    el.style.cursor = "pointer";
+    const img = el.querySelector("img");
+    const fb  = el.querySelector(".card-poster-fallback");
+    if (img) { img.src = src; img.style.display = "block"; }
+    if (fb)  { fb.style.display = "none"; }
+  });
+}
+
+async function fetchPosters() {
+  // 0. Clear old broken cache keys from previous versions
+  ["mcu-posters-v1","mcu-posters-v2","mcu-posters-tmdb-v1"].forEach(k => { try { localStorage.removeItem(k); } catch(e){} });
+
+  // 1. Load cache instantly so returning visitors see posters right away
+  try {
+    const cached = JSON.parse(localStorage.getItem(POSTER_CACHE_KEY) || "{}");
+    if (Object.keys(cached).length > 0) {
+      POSTERS = cached;
+      renderList();
+    }
+  } catch(e) {}
+
+  // 2. Only fetch what's missing
+  const missing = Object.keys(TMDB_IDS).filter(k => !POSTERS[k]);
+  if (!missing.length) return;
+
+  // 3. Fetch each missing poster from TMDB (parallel, 8 at a time)
+  const BATCH = 8;
+  for (let i = 0; i < missing.length; i += BATCH) {
+    await Promise.all(
+      missing.slice(i, i + BATCH).map(async key => {
+        try {
+          const [id, type] = TMDB_IDS[key];
+          const url = `https://api.themoviedb.org/3/${type}/${id}?api_key=${TMDB_KEY}&language=en-US`;
+          const res = await fetch(url);
+          if (!res.ok) return;
+          const data = await res.json();
+          const path = data.poster_path;
+          if (path) applyPoster(key, TMDB_IMG + path);
+        } catch(e) {}
+      })
+    );
+  }
+
+  // 4. Save updated cache
+  try { localStorage.setItem(POSTER_CACHE_KEY, JSON.stringify(POSTERS)); } catch(e) {}
+}
+
+// ── STATS ──
+function updateStats() {
+  const done = watched.size;
+  const pct = TOTAL ? Math.round(done / TOTAL * 100) : 0;
+  const circ = 2 * Math.PI * 18;
+  document.getElementById("ringFill").style.strokeDashoffset = circ - (circ * pct / 100);
+  document.getElementById("ringPct").textContent = pct + "%";
+  document.getElementById("statDone").textContent = done;
+  document.getElementById("statLeft").textContent = TOTAL - done;
+  document.getElementById("botFill").style.width = pct + "%";
+  const minsLeft = allMovies.filter(m => !watched.has(m.title+"-"+m.year)).reduce((a,m)=>a+m.mins,0);
+  const essLeft = allMovies.filter(m => m.priority==="essential" && !watched.has(m.title+"-"+m.year)).length;
+  document.getElementById("botHrs").textContent = "~" + Math.round(minsLeft/60) + "h left";
+  document.getElementById("botEss").textContent = essLeft + " essential left";
+}
+
+// ── FILTERS ──
+const FILTERS = [
+  {id:"all",label:"All"},{id:"essential",label:"⭐ Essential"},{id:"unwatched",label:"▶ Unwatched"},
+  {id:"fox",label:"🦊 FOX X-Men"},{id:"mcu",label:"🛡 MCU"},
+  {id:"phase1",label:"Phase 1"},{id:"phase2",label:"Phase 2"},{id:"phase3",label:"Phase 3"},
+  {id:"phase4",label:"Phase 4"},{id:"phase5",label:"Phase 5"},{id:"phase6",label:"Phase 6"},
+];
+function buildFilters() {
+  const bar = document.getElementById("filterBar");
+  FILTERS.forEach(f => {
+    const btn = document.createElement("button");
+    btn.className = "ftab"+(f.id==="all"?" active":"")+(f.id==="fox"?" fox-tab":"")+(f.id==="mcu"?" mcu-tab":"");
+    btn.textContent = f.label;
+    btn.addEventListener("click", () => {
+      activeFilter = f.id;
+      document.querySelectorAll(".ftab").forEach(b=>b.classList.remove("active"));
+      btn.classList.add("active");
+      renderList();
+    });
+    bar.appendChild(btn);
+  });
+}
+function filterMovies(movies, section) {
+  let list = [...movies];
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    list = list.filter(m => m.title.toLowerCase().includes(q) || m.chars.some(c=>c.name.toLowerCase().includes(q)||c.desc.toLowerCase().includes(q)));
+  }
+  switch(activeFilter) {
+    case "essential": list=list.filter(m=>m.priority==="essential"); break;
+    case "unwatched": list=list.filter(m=>!watched.has(m.title+"-"+m.year)); break;
+    case "fox": if(!section.fox) list=[]; break;
+    case "mcu": if(section.fox) list=[]; break;
+    case "phase1": if(section.phase!=="PHASE 1") list=[]; break;
+    case "phase2": if(section.phase!=="PHASE 2") list=[]; break;
+    case "phase3": if(section.phase!=="PHASE 3") list=[]; break;
+    case "phase4": if(section.phase!=="PHASE 4") list=[]; break;
+    case "phase5": if(section.phase!=="PHASE 5") list=[]; break;
+    case "phase6": if(section.phase!=="PHASE 6") list=[]; break;
+  }
+  return list;
+}
+
+// ── RENDER ──
+// Cards are always appended to a .card-grid div (never directly to area).
+// .card-grid gets class 'landscape' when width > height → triggers 2-col CSS grid.
+let globalN = 0;
+function renderList() {
+  const area = document.getElementById("scrollArea");
+  area.innerHTML = "";
+  globalN = 0;
+  let shown = 0;
+  const landscape = window.innerWidth > window.innerHeight;
+
+  DATA.forEach(section => {
+    const movies = filterMovies(section.movies, section);
+    if (!movies.length) return;
+    shown += movies.length;
+    const fox = section.fox;
+    const accent = fox ? "var(--purple)" : "var(--gold)";
+    const ghost = fox ? "🦊" : (section.phase.match(/\d/)||[""])[0];
+    const ghostColor = fox ? "rgba(168,85,247,0.08)" : "rgba(240,192,64,0.06)";
+    const lineColor = fox ? "var(--purple)" : "var(--gold)";
+
+    // Section header
+    const hdr = document.createElement("div");
+    hdr.className = "section-header";
+    hdr.innerHTML = `
+      <div class="section-ghost" style="color:${ghostColor}">${ghost}</div>
+      <div class="section-text"><h3>${section.phase}</h3><p>${section.sub}</p></div>
+      <div class="section-line" style="background:linear-gradient(90deg,${lineColor},transparent)"></div>`;
+    area.appendChild(hdr);
+
+    // Card grid wrapper — THIS is what gets the landscape class
+    const grid = document.createElement("div");
+    grid.className = "card-grid" + (landscape ? " landscape" : "");
+    area.appendChild(grid);
+
+    movies.forEach((m, idx) => {
+      globalN++;
+      const id = m.title+"-"+m.year;
+      const isW = watched.has(id);
+      const isE = m.priority === "essential";
+      const topBg = fox ? "linear-gradient(90deg,#7C3AED,var(--purple))" : "linear-gradient(90deg,var(--blue2),var(--gold))";
+      const borderNormal = fox ? "rgba(168,85,247,0.2)" : "rgba(240,192,64,0.15)";
+      const chipBg = fox ? "rgba(168,85,247,0.1)" : "rgba(240,192,64,0.08)";
+      const chipBorder = fox ? "rgba(168,85,247,0.25)" : "rgba(240,192,64,0.25)";
+
+      const previewChars = m.chars.slice(0,3);
+      const moreCount = m.chars.length - 3;
+      let chipsHtml = previewChars.map(c =>
+        `<span class="char-chip" style="background:${chipBg};color:${accent};border:1px solid ${chipBorder}">${c.name}</span>`
+      ).join("");
+      if (moreCount > 0) {
+        chipsHtml += `<button class="more-btn" data-id="${id}">+${moreCount} more ▾</button>`;
+      }
+
+      const card = document.createElement("div");
+      card.className = "movie-card"+(isW?" is-watched":"");
+      card.style.border = "1px solid "+(isW?"rgba(255,255,255,0.04)":borderNormal);
+      card.style.animationDelay = (idx*0.025)+"s";
+      card.dataset.movieId = id;
+      const posterSrc = POSTERS[id] || "";
+      // Always include img tag (hidden when no src) so applyPoster() can target it live
+      const posterHtml = `<img src="${posterSrc}" alt="${m.title}" loading="lazy" `+
+        `style="display:${posterSrc?'block':'none'}" `+
+        `onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`+
+        `<div class="card-poster-fallback" style="display:${posterSrc?'none':'flex'};font-size:10px;color:var(--muted);text-align:center;padding:4px">${m.title.split(":")[0]}</div>`;
+      card.innerHTML = `
+        <div class="card-accent" style="background:${topBg}"></div>
+        <div class="card-inner">
+          <div class="card-poster" data-poster="${posterSrc.includes('tmdb.org') ? posterSrc.replace('/w342/','/w500/') : posterSrc}" data-title="${m.title.replace(/"/g,'&quot;')}" style="cursor:${posterSrc?'pointer':'default'}">${posterHtml}</div>
+          <div class="card-content">
+            <div class="card-badges">
+              <span class="badge ${fox?"badge-fox":"badge-mcu"}">${fox?"FOX":"MCU"}</span>
+              <span class="badge ${isE?"badge-essential":"badge-optional"}">${m.priority}</span>
+              <span class="badge badge-year">${m.year}</span>
+              <span class="badge badge-year">${Math.floor(m.mins/60)}h${m.mins%60?m.mins%60+"m":""}</span>
+            </div>
+            <div class="card-title">${m.title}</div>
+            <div class="card-note">${m.note}</div>
+          </div>
+          <div class="watch-wrap">
+            <button class="watch-btn${isW?" on":""}">${isW?"✓":""}</button>
+          </div>
+        </div>
+        <div class="chars-section"><div class="chars-chips">${chipsHtml}</div></div>`;
+
+      // Watch toggle
+      card.querySelector(".watch-btn").addEventListener("click", e => {
+        e.stopPropagation();
+        const btn = e.currentTarget;
+        if (watched.has(id)) {
+          watched.delete(id); btn.classList.remove("on"); btn.textContent="";
+          card.classList.remove("is-watched"); card.style.border="1px solid "+borderNormal;
+        } else {
+          watched.add(id); btn.classList.add("on"); btn.textContent="✓";
+          card.classList.add("is-watched"); card.style.border="1px solid rgba(255,255,255,0.04)";
+        }
+        save(); updateStats();
+      });
+
+      // Tap poster thumbnail → lightbox
+      const posterEl = card.querySelector(".card-poster");
+      if (posterEl && posterEl.dataset.poster) {
+        posterEl.addEventListener("click", e => {
+          e.stopPropagation();
+          openLightbox(posterEl.dataset.poster, posterEl.dataset.title);
+        });
+      }
+
+      // More button → modal
+      const moreBtn = card.querySelector(".more-btn");
+      if (moreBtn) moreBtn.addEventListener("click", e => { e.stopPropagation(); openModal(id); });
+
+      // *** Cards go into grid, NOT area ***
+      grid.appendChild(card);
+    });
+  });
+
+  if (!shown) {
+    area.innerHTML = `<div class="empty"><div class="empty-icon">🎬</div><h3>No results</h3><p>Try a different search or filter.</p></div>`;
+  }
+  updateStats();
+}
+
+// ── MODAL ──
+function openModal(id) {
+  const m = allMovies.find(x=>x.title+"-"+x.year===id);
+  if (!m) return;
+  const accent = m.fox?"var(--purple)":"var(--gold)";
+  const grad = m.fox?"linear-gradient(135deg,#fff,var(--purple))":"linear-gradient(135deg,#fff,var(--gold))";
+
+  // Poster hero
+  const posterSrc = POSTERS[id] || "";
+  // For modal use w500 instead of w342 for higher quality
+  const heroSrc = posterSrc.includes("tmdb.org") ? posterSrc.replace("/w342/","/w500/") : posterSrc;
+  const heroEl = document.getElementById("modalPosterHero");
+  if (heroSrc) {
+    heroEl.style.display = "";
+    heroEl.innerHTML = `
+      <img src="${heroSrc}" alt="${m.title}"
+        onerror="this.parentElement.style.display='none'"
+        style="width:100%;max-height:340px;object-fit:cover;display:block;">
+      <div class="modal-poster-gradient"></div>
+      <button class="modal-poster-zoom-btn" onclick="openLightbox('${heroSrc.includes('tmdb.org') ? heroSrc.replace('/w500/','/original/') : heroSrc}','${m.title.replace(/'/g,"\\'")}')">⛶</button>`;
+  } else {
+    heroEl.style.display = "none";
+    heroEl.innerHTML = "";
+  }
+
+  const t = document.getElementById("modalTitle");
+  t.textContent=m.title; t.style.background=grad;
+  t.style.webkitBackgroundClip="text"; t.style.webkitTextFillColor="transparent";
+  document.getElementById("modalSub").textContent = m.year+" · "+m.chars.length+" characters · "+Math.floor(m.mins/60)+"h"+(m.mins%60?m.mins%60+"m":"");
+  document.getElementById("modalChars").innerHTML = m.chars.map(c=>
+    `<div class="modal-row"><div class="modal-name" style="color:${accent}">${c.name}</div><div class="modal-desc">${c.desc}</div></div>`
+  ).join("");
+  document.getElementById("modal").classList.add("open");
+}
+function closeModal(e) { if(e.target===document.getElementById("modal")) closeModalDirect(); }
+function closeModalDirect() { document.getElementById("modal").classList.remove("open"); }
+
+// ── LIGHTBOX ──
+function openLightbox(src, alt) {
+  const lb = document.getElementById("lightbox");
+  const img = document.getElementById("lightboxImg");
+  img.src = src;
+  img.alt = alt;
+  lb.classList.add("open");
+}
+function closeLightbox() {
+  document.getElementById("lightbox").classList.remove("open");
+}
+
+// ── SEARCH ──
+document.getElementById("searchInput").addEventListener("input", e => {
+  searchQuery = e.target.value.trim();
+  renderList();
+});
+
+// ── PORTRAIT LOCK ──
+// Lock to portrait-primary on load (works when installed as PWA / fullscreen)
+(function () {
+  function lockPortrait() {
+    if (screen.orientation && typeof screen.orientation.lock === "function") {
+      screen.orientation.lock("portrait-primary").catch(function(){
+        // Fallback: try generic portrait
+        screen.orientation.lock("portrait").catch(function(){});
+      });
+    }
+  }
+  // Attempt immediately and after a short delay for PWA startup
+  lockPortrait();
+  setTimeout(lockPortrait, 300);
+  // Re-attempt after any orientation change so it stays locked
+  window.addEventListener("orientationchange", function () {
+    setTimeout(lockPortrait, 80);
+    setTimeout(renderList, 200);
+  });
+  window.addEventListener("resize", function () {
+    clearTimeout(window._rt);
+    window._rt = setTimeout(renderList, 150);
+  });
+})();
+
+// ── SERVICE WORKER ──
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("./sw.js").catch(function(){});
+}
+
+// ── INIT ──
+buildFilters();
+renderList();
+fetchPosters(); // fetch TMDB posters in background using your API key, updates cards live
+</script>
+</body>
+</html>
